@@ -10,6 +10,7 @@ _this_script=/opt/brandt/mattermost-utils/utils/createLDAPUser.sh
 _this_conf=/etc/brandt/createLDAPUser.conf
 
 _platform_bin=/opt/mattermost/bin/platform
+_platform_config=/etc/mattermost/config.json
 
 [ ! -r "$_brandt_utils" ] && echo "Unable to find required file: $_brandt_utils" 1>&2 && exit 6
 . "$_brandt_utils"
@@ -72,8 +73,7 @@ while /bin/true ; do
     shift
 done
 _user="$1"
-_password="$2"
-shift 2
+shift 1
 
 [ -z "$_user" ] && usage 1 "${BOLD_RED}$0: A username MUST be supplied!${NORMAL}"
 [ -d "$( dirname $_platform_bin )" ] || usage 1 "${BOLD_RED}$0: Unable to find Mattermost binarys!${NORMAL}"
@@ -91,7 +91,6 @@ _attrs=""
 [ -n "$_lastname" ] && _attrs="$_attrs $_lastname"
 [ -n "$_nickname" ] && _attrs="$_attrs $_nickname"
 [ -n "$_username" ] && _attrs="$_attrs $_username"
-
 _LDAP_filter="\"(&$_LDAP_filter($_username=$_user))\""
 echo ldapsearch $_cmd \"$_LDAP_filter\" $_attrs | sed -e 's|-w "[^"]*"|-w "*****"|' -e 's|""|"|g' >&2
 _ldap_output=$( eval ldapsearch $_cmd "$_LDAP_filter" $_attrs | perl -p00e 's/\r?\n //g' )
@@ -108,15 +107,14 @@ _nickname=$( echo -e "$_ldap_output" | grep "^$_nickname:\s" 2>/dev/null | sed "
 echo ""
 
 pushd $( dirname "$_platform_bin" ) > /dev/null 2>&1
-_mm_output=$( "$_platform_bin" user search "$_user" 2>&1 )
+_mm_output=$( "$_platform_bin" --config "$_platform_config" user search "$_user" 2>&1 )
 popd > /dev/null 2>&1
 if echo -e "$_mm_output" | grep "^username:\s" >/dev/null 2>&1
 then
-	echo "User Already Exists!" >&2
-	echo -e "$_mm_output" >&2
+	echo -e "User Already Exists!\n$_mm_output" >&2
 	if [ -n "$_password" ]; then
 	        pushd $( dirname "$_platform_bin" ) > /dev/null 2>&1
-        	_output=$( "$_platform_bin" user password "$_user" "$_password" 2>&1 )
+        	_output=$( "$_platform_bin" --config "$_platform_config" user password "$_user" "$_password" 2>&1 )
 	        popd > /dev/null 2>&1
 	        if [ -z "$_output" ]; then
         	        logger -st "mm-createuser" "Password updated successfully for user ($_user) with password ($_password)"
@@ -129,13 +127,13 @@ then
 else
 	[ -z "$_password" ] && _password="$_default_password"
 	pushd $( dirname "$_platform_bin" ) > /dev/null 2>&1
-	_mm_output=$( "$_platform_bin" user create --username "$_user" --email "$_email" --firstname "$_firstname" --lastname "$_lastname" --locale "$_locale" --nickname "$_nickname" --password "$_password" 2>&1 )
+	_mm_output=$( "$_platform_bin" --config "$_platform_config" user create --username "$_user" --email "$_email" --firstname "$_firstname" --lastname "$_lastname" --locale "$_locale" --nickname "$_nickname" --password "$_password" 2>&1 )
 	popd > /dev/null 2>&1
         echo -e "$_mm_output" >&2
 	if echo -e "$_mm_output" | grep -i "^Created User" >/dev/null 2>&1
 	then
 		logger -st "mm-createuser" "Created user $_user with the password ($_password)"
-		exit o
+		exit 0
 	fi
 fi
 
