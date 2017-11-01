@@ -33,7 +33,9 @@ if [ ! -f "$_this_conf" ]; then
           echo '_username="sAMAccountName"'
           echo '_default_password="PassW0rd"'
           echo '# Locale (ex: en, fr)'
-          echo '_locale="en"') > "$_this_conf"
+          echo '_locale="en"'
+          echo '# Default Team'
+          echo '_default_team="OPW"') > "$_this_conf"
 fi
 . "$_this_conf"
 
@@ -125,16 +127,25 @@ then
 	fi
 	exit 0
 else
+	_rc=1
 	[ -z "$_password" ] && _password="$_default_password"
 	pushd $( dirname "$_platform_bin" ) > /dev/null 2>&1
 	_mm_output=$( "$_platform_bin" --config "$_platform_config" user create --username "$_user" --email "$_email" --firstname "$_firstname" --lastname "$_lastname" --locale "$_locale" --nickname "$_nickname" --password "$_password" 2>&1 )
-	popd > /dev/null 2>&1
         echo -e "$_mm_output" >&2
 	if echo -e "$_mm_output" | grep -i "^Created User" >/dev/null 2>&1
 	then
 		logger -st "mm-createuser" "Created user $_user with the password ($_password)"
-		exit 0
+		_rc=0
 	fi
+
+	if [ -n "$_default_team" ]; then
+	        if "$_platform_bin" --config "$_platform_config" team add "$_default_team" "$_user" >&2
+        	then
+                	logger -st "mm-createuser" "User $_user added to default Team ($_default_team)"
+        	fi
+	fi
+        popd > /dev/null 2>&1
+	exit $_rc
 fi
 
 exit 1
