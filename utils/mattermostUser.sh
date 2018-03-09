@@ -9,10 +9,6 @@ _brandt_utils=/opt/brandt/common/brandt.sh
 _this_script=/opt/brandt/mattermost-utils/utils/mattermostUser.sh
 _this_conf=/etc/brandt/mattermostUser.conf
 
-_platform_bin=/opt/mattermost/bin/platform
-_platform_config=/etc/mattermost/config.json
-_platform_user=mattermost
-
 [ ! -r "$_brandt_utils" ] && echo "Unable to find required file: $_brandt_utils" 1>&2 && exit 6
 . "$_brandt_utils"
 
@@ -20,23 +16,28 @@ if [ ! -f "$_this_conf" ]; then
 	mkdir $( dirname "$_this_conf" ) 2> /dev/null
 	( echo '#     Configuration file for update script'
 	  echo '#     Bob Brandt <projects@brandt.ie>'
-          echo '# LDAP Settings'
-          echo '_LDAP_filter="(&(objectClass=person)(mail=*))"'
-          echo '_LDAP_URI="ldap://ldap/"'
-          echo '_LDAP_Base=""'
-          echo '_LDAP_BindDN=""'
-          echo '_LDAP_BindPW=""'
-          echo '# Mattermost to LDAP mappings'
-          echo '_email="mail"'
-          echo '_firstname="givenName"'
-          echo '_lastname="sn"'
-          echo '_nickname="displayName"'
-          echo '_username="sAMAccountName"'
-          echo '_default_password="PassW0rd"'
-          echo '# Locale (ex: en, fr)'
-          echo '_locale="en"'
-          echo '# Default Team'
-          echo '_default_team="OPW"') > "$_this_conf"
+      echo '# Mattermost Settings'
+      echo '_Mattermost_Host=""'
+      echo '_Mattermost_User="mattermost"'
+      echo '_Mattermost_bin="/opt/mattermost/bin/platform"'
+      echo '_Mattermost_config="/etc/mattermost/config.json"'
+      echo '# LDAP Settings'
+      echo '_LDAP_filter="(&(objectClass=person)(mail=*))"'
+      echo '_LDAP_URI="ldap://ldap/"'
+      echo '_LDAP_Base=""'
+      echo '_LDAP_BindDN=""'
+      echo '_LDAP_BindPW=""'
+      echo '# Mattermost to LDAP mappings'
+      echo '_email="mail"'
+      echo '_firstname="givenName"'
+      echo '_lastname="sn"'
+      echo '_nickname="displayName"'
+      echo '_username="sAMAccountName"'
+      echo '_default_password="PassW0rd"'
+      echo '# Locale (ex: en, fr)'
+      echo '_locale="en"'
+      echo '# Default Team'
+      echo '_default_team="OPW"') > "$_this_conf"
 fi
 . "$_this_conf"
 
@@ -47,9 +48,10 @@ function usage() {
     [ "$2" == "" ] || echo -e "$2"
 	( echo -e "Usage: $0 username"
     echo -e " -c, --create             Create account is does not exist."
+    echo -e "                           (If not set, default password is: $_password)"
     echo -e " -p, --password PASSWORD  Change password"
-	  echo -e "                           (Default password is: $_password)"
     echo -e " -r, --remote HOST        Use remote Mattermost host. (SSH Keys must be setup)"
+    echo -e "                           (Default host is: $_Mattermost_Host)"
     echo -e " -t, --test               Test connection to Mattermost host"
 	  echo -e " -h, --help               Display this help and exit"
 	  echo -e " -v, --version            Output version information and exit" ) >&$_output
@@ -69,7 +71,7 @@ eval set -- "$_args";
 
 _password=""
 _create=0
-_remote=""
+_remote="$_Mattermost_Host"
 _test=0
 while /bin/true ; do
     case "$1" in
@@ -90,8 +92,8 @@ shift 1
 [ -z "$_user" ] && usage 1 "${BOLD_RED}$0: A username MUST be supplied!${NORMAL}"
 
 
-
-
+#( id "$_Mattermost_User" && test -x "$_Mattermost_bin" && test -r "$_Mattermost_config" ) 2> /dev/null > /dev/null ; echo $?
+echo '( id mattermost && test -x /opt/mattermost/bin/platform && test -r /etc/mattermost/config.json ) 2> /dev/null > /dev/null' | sudo -u mattermost -s
 
 exit 0
 
